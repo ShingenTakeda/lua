@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.5)
 project(lua C)
 
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+
+# Extract Lua version from lua.h
+file(READ lua.h LUA_H_CONTENTS)
+string(REGEX MATCH "LUA_VERSION_MAJOR\t\"([0-9]+)\"" _ "${LUA_H_CONTENTS}")
+set(LUA_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "LUA_VERSION_MINOR\t\"([0-9]+)\"" _ "${LUA_H_CONTENTS}")
+set(LUA_VERSION_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "LUA_VERSION_RELEASE\t\"([0-9]+)\"" _ "${LUA_H_CONTENTS}")
+set(LUA_VERSION_RELEASE ${CMAKE_MATCH_1})
+
 # Set C standard to C99
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -84,9 +95,21 @@ add_library(lua_static STATIC
     ${AUX_SOURCES}
     ${LIB_SOURCES}
 )
-
-# Set properties for the static library
 set_target_properties(lua_static PROPERTIES OUTPUT_NAME lua)
+
+if(BUILD_SHARED_LIBS)
+    # Build the shared library 'liblua.so'
+    add_library(lua_shared SHARED
+        ${CORE_SOURCES}
+        ${AUX_SOURCES}
+        ${LIB_SOURCES}
+    )
+    set_target_properties(lua_shared PROPERTIES
+        OUTPUT_NAME lua
+        SOVERSION "${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
+        VERSION "${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}.${LUA_VERSION_RELEASE}"
+    )
+endif()
 
 # Add the executable 'lua'
 add_executable(lua ${LUA_SOURCES})
@@ -104,5 +127,23 @@ target_link_libraries(lua PRIVATE lua_static m dl)
 
 # Installation
 install(TARGETS lua DESTINATION bin)
-install(TARGETS lua_static DESTINATION lib)
 install(FILES lua.h luaconf.h lualib.h lauxlib.h DESTINATION include)
+
+include(GNUInstallDirs)
+
+set(LUA_INSTALL_LIBS lua_static)
+if(BUILD_SHARED_LIBS)
+    list(APPEND LUA_INSTALL_LIBS lua_shared)
+endif()
+
+install(TARGETS ${LUA_INSTALL_LIBS}
+    EXPORT lua-targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(EXPORT lua-targets
+    FILE LuaTargets.cmake
+    NAMESPACE Lua::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lua
+)
