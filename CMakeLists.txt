@@ -96,6 +96,7 @@ add_library(lua_static STATIC
     ${LIB_SOURCES}
 )
 set_target_properties(lua_static PROPERTIES OUTPUT_NAME lua)
+target_include_directories(lua_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(BUILD_SHARED_LIBS)
     # Build the shared library 'liblua.so'
@@ -109,6 +110,7 @@ if(BUILD_SHARED_LIBS)
         SOVERSION "${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
         VERSION "${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}.${LUA_VERSION_RELEASE}"
     )
+    target_include_directories(lua_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 # Add the executable 'lua'
